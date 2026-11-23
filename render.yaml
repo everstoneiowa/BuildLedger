@@ -1,0 +1,29 @@
+# Render Blueprint: one web service with a private disk for uploaded files, plus a managed PostgreSQL database.
+# In Render: New > Blueprint > pick this repository > Apply.
+services:
+  - type: web
+    name: buildledger
+    runtime: node
+    plan: 0.5c-512mb
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: buildledger-files
+      mountPath: /var/data
+      sizeGB: 5
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: buildledger-db
+          property: connectionString
+      - key: APP_SECRET
+        generateValue: true   # encrypts bank and tax ID numbers; copy it somewhere safe and never change it
+      - key: STORAGE_DIR
+        value: /var/data/files
+
+databases:
+  - name: buildledger-db
+    plan: 0.1c-256mb

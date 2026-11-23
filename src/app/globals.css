@@ -1,0 +1,32 @@
+@import "tailwindcss";
+@import "@fontsource/ibm-plex-sans/400.css";
+@import "@fontsource/ibm-plex-sans/500.css";
+@import "@fontsource/ibm-plex-sans/600.css";
+
+@theme {
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-navy-950: #0c1524; --color-navy-900: #121e31; --color-navy-800: #1b2a42; --color-navy-700: #2a3c5a;
+  --color-paper: #f3f4f6; --color-ink: #17212f; --color-muted: #5d6877; --color-line: #dfe3e8;
+  --color-brand: #0e6f66; --color-brand-dark: #0a564f; --color-brand-soft: #e3f1ef;
+}
+html { font-size: 15px; }
+body { background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); font-feature-settings: "tnum" 1; }
+:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; }
+@layer components {
+  .btn { @apply inline-flex items-center justify-center gap-1.5 rounded-md border border-line bg-white px-3 py-1.5 text-sm font-medium text-ink whitespace-nowrap cursor-pointer hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed; }
+  .btn-primary { @apply border-brand bg-brand text-white hover:bg-brand-dark; }
+  .btn-danger { @apply border-red-200 text-red-700 hover:bg-red-50; }
+  .btn-sm { @apply px-2 py-1 text-xs; }
+  .input { @apply w-full rounded-md border border-line bg-white px-2.5 py-1.5 text-sm text-ink placeholder:text-slate-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20; }
+  .label { @apply mb-1 block text-xs font-medium text-muted; }
+  .panel { @apply rounded-lg border border-line bg-white; }
+  .th { @apply px-3 py-2 text-left text-xs font-semibold text-muted whitespace-nowrap; }
+  .td { @apply px-3 py-2 text-sm align-top; }
+  .link { @apply text-brand-dark underline-offset-2 hover:underline; }
+}
+@media print {
+  .no-print { display: none !important; }
+  body { background: white; font-size: 11px; }
+  .panel { border: none; }
+  main { padding: 0 !important; margin: 0 !important; }
+}

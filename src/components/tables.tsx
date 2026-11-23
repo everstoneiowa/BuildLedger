@@ -1,0 +1,39 @@
+import { DataTable, type Column } from './DataTable';
+import { FormModal } from './FormModal';
+import { Badge } from './ui';
+import { saveWaiver, updateDocument } from '@/app/actions';
+import { waiverFields, documentFields } from '@/lib/fields';
+
+type Rows = Record<string, any>[]; type Opt = { id: number; name: string };
+export function BillsTable({ rows, hideProject, name = 'bills' }: { rows: Rows; hideProject?: boolean; name?: string }) {
+  const cols: Column[] = [{ key: 'date', label: 'Date', type: 'date' }, { key: 'vendor', label: 'Vendor / payee', link: 'vhref' }, { key: 'ref', label: 'Invoice #', link: 'href' }, ...(hideProject ? [] : [{ key: 'project', label: 'Project', filter: true } as Column]),
+    { key: 'categories', label: 'Category' }, { key: 'description', label: 'Description' }, { key: 'due', label: 'Due', type: 'date' }, { key: 'status', label: 'Status', type: 'badge', filter: true }, { key: 'paid_via', label: 'Paid via' }, { key: 'docs', label: 'Files', type: 'number' },
+    { key: 'total', label: 'Total', type: 'money', total: true }, { key: 'balance', label: 'Balance', type: 'money', total: true }];
+  return <DataTable exportName={name} columns={cols} empty="No bills or expenses yet." rows={rows.map(r => ({ ...r, ref: r.ref || 'View', href: `/bills/${r.id}`, vhref: r.vendor_id ? `/vendors/${r.vendor_id}` : null, status: r.overdue ? 'overdue' : r.status, project: r.project || 'General', description: r.kind === 'internal' ? `${r.description} (internally prepared)` : r.description }))} />;
+}
+export function InvoicesTable({ rows }: { rows: Rows }) {
+  return <DataTable exportName="invoices" empty="No invoices issued yet." columns={[{ key: 'number', label: 'Invoice #', link: 'href' }, { key: 'date', label: 'Date', type: 'date' }, { key: 'client', label: 'Client', link: 'chref' }, { key: 'project', label: 'Project', filter: true }, { key: 'due', label: 'Due', type: 'date' }, { key: 'status', label: 'Status', type: 'badge', filter: true }, { key: 'total', label: 'Total', type: 'money', total: true }, { key: 'balance', label: 'Balance', type: 'money', total: true }]}
+    rows={rows.map(r => ({ ...r, href: `/invoices/${r.id}`, chref: `/clients/${r.client_id}` }))} />;
+}
+export function ChecksTable({ rows }: { rows: Rows }) {
+  return <DataTable exportName="check-register" empty="No checks written yet." columns={[{ key: 'number', label: 'Check #', link: 'href', type: 'number' }, { key: 'date', label: 'Date', type: 'date' }, { key: 'payee', label: 'Payee' }, { key: 'memo', label: 'Memo' }, { key: 'project', label: 'Project', filter: true }, { key: 'bank', label: 'Account' }, { key: 'status', label: 'Status', type: 'badge', filter: true }, { key: 'cleared', label: 'Cleared', type: 'date' }, { key: 'amount', label: 'Amount', type: 'money', total: true }]}
+    rows={rows.map(r => ({ ...r, href: `/checks/${r.id}`, amount_sort: r.status === 'voided' ? 0 : r.amount }))} />;
+}
+export function PaymentsTable({ rows, scoped }: { rows: Rows; scoped?: boolean }) {
+  return <DataTable exportName="payments" empty="No payments recorded yet." columns={[{ key: 'date', label: 'Date', type: 'date' }, { key: 'dir', label: 'Type', filter: true }, { key: 'party', label: 'Vendor / client' }, { key: 'how', label: 'Method', link: 'href' }, { key: 'applied', label: 'Applied to' }, { key: 'account', label: 'Account' }, { key: 'status', label: 'Status', type: 'badge' }, { key: 'amt', label: scoped ? 'Amount for this project' : 'Amount', type: 'money' }]}
+    rows={rows.map(r => ({ ...r, dir: r.direction === 'in' ? 'Received' : 'Paid out', how: r.method === 'check' && r.direction === 'out' ? `Check #${r.reference}` : `${String(r.method).toUpperCase()}${r.reference ? ' ' + r.reference : ''}`, href: r.check_id ? `/checks/${r.check_id}` : null, amt: r.scoped }))} />;
+}
+export function WaiversTable({ rows, canEdit, projects, vendors, types, docs }: { rows: Rows; canEdit: boolean; projects: Opt[]; vendors: Opt[]; types: string[]; docs: Opt[] }) {
+  return <DataTable exportName="lien-waivers" empty="No lien waivers tracked yet. They are created automatically when you pay a vendor marked “expect a lien waiver”." columns={[{ key: 'vendor', label: 'Vendor', link: 'vhref' }, { key: 'project', label: 'Project', filter: true }, { key: 'type', label: 'Waiver type' }, { key: 'payment', label: 'Payment' }, { key: 'payment_date', label: 'Paid', type: 'date' }, { key: 'amount', label: 'Amount', type: 'money' }, { key: 'state', label: 'Status', filter: true }, { key: 'received_date', label: 'Received', type: 'date' }, { key: 'file', label: 'Document', sortable: false }, { key: 'actions', label: '' }]}
+    rows={rows.map(r => ({ ...r, vhref: `/vendors/${r.vendor_id}`, state: <Badge tone={r.status === 'requested' ? 'red' : r.status === 'received' ? 'green' : 'gray'}>{r.status === 'requested' ? 'Missing' : r.status}</Badge>, state_sort: r.status === 'requested' ? 'Missing' : r.status,
+      file: r.document_id ? <a className="link" href={`/documents/${r.document_id}`}>View</a> : '', actions: canEdit ? <FormModal title="Lien waiver" trigger="Update" variant="btn-sm" action={saveWaiver} hidden={{ id: r.id }} fields={waiverFields(projects, vendors, [...new Set([...types, r.type])], docs)} initial={{ projectId: r.project_id, vendorId: r.vendor_id, type: r.type, status: r.status, amount: r.amount, paymentDate: r.payment_date, receivedDate: r.received_date, documentId: r.document_id, notes: r.notes }} /> : '' }))} />;
+}
+const size = (n: number) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+export function DocumentsTable({ rows, canEdit, projects, vendors }: { rows: Rows; canEdit: boolean; projects: Opt[]; vendors: Opt[] }) {
+  return <DataTable exportName="documents" empty="No documents here yet. Drop files above to add them." columns={[{ key: 'name', label: 'Document', link: 'href' }, { key: 'folder', label: 'Folder', filter: true }, { key: 'projects', label: 'Project' }, { key: 'vendors', label: 'Vendor' }, { key: 'tags', label: 'Tags' }, { key: 'description', label: 'Description' }, { key: 'ver', label: 'Version' }, { key: 'uploaded', label: 'Uploaded', type: 'date' }, { key: 'uploader', label: 'By' }, { key: 'sz', label: 'Size' }, { key: 'actions', label: '' }]}
+    rows={rows.map(r => ({ ...r, href: `/documents/${r.id}`, ver: `v${r.version}`, sz: size(r.size), sz_sort: r.size, actions: canEdit ? <FormModal title="Document details" trigger="Edit" variant="btn-sm" action={updateDocument} hidden={{ id: r.id }} fields={documentFields(projects, vendors)} initial={{ name: r.name, folder: r.folder, tags: r.tags, description: r.description }} /> : '' }))} />;
+}
+export function LedgerTable({ rows, showProject, name = 'ledger' }: { rows: Rows; showProject?: boolean; name?: string }) {
+  return <DataTable exportName={name} empty="No transactions yet." columns={[{ key: 'date', label: 'Date', type: 'date' }, { key: 'party', label: 'Vendor / payee' }, { key: 'description', label: 'Description' }, { key: 'category', label: 'Category', filter: true }, ...(showProject ? [{ key: 'project', label: 'Project', filter: true } as Column] : []), { key: 'ref', label: 'Invoice #', link: 'href' }, { key: 'paid_via', label: 'Paid via' }, { key: 'status', label: 'Status', type: 'badge', filter: true }, { key: 'tax', label: 'Tax incl.', type: 'money' }, { key: 'docs', label: 'Files', type: 'number' }, { key: 'cost', label: 'Cost', type: 'money', total: true }, { key: 'revenue', label: 'Revenue', type: 'money', total: true }]}
+    rows={rows.map(r => ({ ...r, ref: r.ref || (r.bill_id || r.invoice_id ? 'View' : ''), href: r.bill_id ? `/bills/${r.bill_id}` : r.invoice_id ? `/invoices/${r.invoice_id}` : null, project: r.project ?? 'General', cost: Number(r.cost) ? r.cost : '', revenue: Number(r.revenue) ? r.revenue : '', tax: Number(r.tax) ? r.tax : '', docs: r.docs || '' }))} />;
+}
